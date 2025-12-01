@@ -1,0 +1,58 @@
+# ==========================
+# Node & Environment Files
+# ==========================
+node_modules/
+.env
+.env.*        # .env.local, .env.production etc.
+*.local
+
+# ==================================
+# Build Outputs & Logs
+# ==================================
+dist/
+build/
+coverage/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==================================
+# System Files
+# ==================================
+.DS_Store
+Thumbs.db
+
+# ==================================
+# VSCode / Editor Settings
+# ==================================
+.vscode/
+.idea/
+*.swp
+
+# ==================================
+# TypeScript
+# ==================================
+*.tsbuildinfo
+
+# ==================================
+# Ignore HTML templates in src/HTML
+# ==================================
+src/HTML/
+
+# ==================================
+# Temporary or Cache Files
+# ==================================
+tmp/
+temp/
+.cache/
+.eslintcache
+
+# ==================================
+# Lockfiles (optional, depending on workflow)
+# ==================================
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

@@ -1,0 +1,36 @@
+```
+└── 📁src
+    └── 📁config
+        ├── dataBase.ts
+    └── 📁constants
+        ├── constants.ts
+    └── 📁controllers
+        ├── payments.Controller.ts
+        ├── plans.Controller.ts
+    └── 📁dbSetup
+        ├── dbSetup.ts
+    └── 📁middlewares
+        ├── ApiKey.Middleware.ts
+        ├── AuthMiddleware.ts
+        ├── Cors.Middleware.ts
+        ├── Domain.Auth.Middleware.ts
+    └── 📁repositories
+        ├── CustomerProfiles.Repository.ts
+        ├── PaymentProfiles.Repository.ts
+        ├── PaymentTransactions.Repository.ts
+        ├── VendorPlans.Repository.ts
+    └── 📁routes
+        ├── index.ts
+        ├── payments.Routes.ts
+        ├── vendorPlans.Routes.ts
+    └── 📁services
+        ├── AuthorizeNet.Service.ts
+        ├── Update.ReatorRecord.service.ts
+    └── 📁types
+        ├── express.d.ts
+    └── 📁utils
+        ├── Email.Validator.ts
+        ├── ResponseHandler.ts
+    └── 📁validation
+        └── vendorPlans.schema.ts
+```
