@@ -17,6 +17,8 @@ CREATE TABLE vendor_plans (
 	created_at timestamptz DEFAULT now() NULL,
 	CONSTRAINT vendor_plans_pkey PRIMARY KEY (id)
 );
+--
+--
 CREATE UNIQUE INDEX idx_vendor_plans_vendor_plan ON public.vendor_plans USING btree (vendor_name, plan_name);
 
 
