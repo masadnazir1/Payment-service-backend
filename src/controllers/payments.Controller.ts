@@ -65,11 +65,12 @@ export class PaymentsController {
       if (!checkProvider) {
         return ResponseHandler.error(
           res,
-          'Missing payment_provider or invalid payment_provider requested',
+          'This payment provider is not currently set up in our system.',
           400,
         );
       }
       //
+
       //
       if (!opaqueData?.dataDescriptor || !opaqueData?.dataValue) {
         return ResponseHandler.error(res, 'Missing payment token', 400);
@@ -202,8 +203,6 @@ export class PaymentsController {
       //check for provider
       let checkProvider = await PaymentProvidersRepository.getByName(providers_name);
 
-      //
-
       //make the vars for providers
       const PaymentProvider = checkProvider?.providers_name;
       const PaymentProviderId = checkProvider?.id;
@@ -233,6 +232,15 @@ export class PaymentsController {
       const paymentProfile = await PaymentProfilesRepository.customerProfileId(customerProfile?.id);
 
       if (!paymentProfile) return ResponseHandler.error(res, 'Payment profile not found', 404);
+
+      //
+      if (checkProvider?.id !== customerProfile?.payment_provider_id) {
+        return ResponseHandler.error(
+          res,
+          'This customer is not registered under the selected payment provider.',
+          400,
+        );
+      }
 
       const transactionResponse = await AuthorizeNetService.chargePayment(
         PaymentProvider,
@@ -275,8 +283,8 @@ export class PaymentsController {
         opaqueData,
       } = req.body;
 
-      if (!email || !firstName || !lastName)
-        return ResponseHandler.error(res, 'email,firstName, lastName required', 400);
+      if (!email || !firstName || !lastName || !providers_name)
+        return ResponseHandler.error(res, 'email,firstName,providers_name, lastName required', 400);
 
       //validate the email
       if (!EmailValidator.isValid(email)) {
@@ -314,6 +322,14 @@ export class PaymentsController {
       if (!paymentProfile) return ResponseHandler.error(res, 'Payment profile not found', 404);
 
       //
+      //
+      if (checkProvider?.id !== customerProfile?.payment_provider_id) {
+        return ResponseHandler.error(
+          res,
+          'This customer is not registered under the selected payment provider.',
+          400,
+        );
+      }
       //
       const updated = await AuthorizeNetService.updatePaymentProfile(
         PaymentProvider,
@@ -364,18 +380,46 @@ export class PaymentsController {
   // Delete a payment profile
   async deletePaymentMethod(req: AuthRequest, res: Response) {
     try {
-      const { email } = req.body;
+      const { providers_name, email } = req.body;
 
-      const paymentProfile = await CustomerProfilesRepository.getByUserEmailId(email);
+      const customerProfile = await CustomerProfilesRepository.getByUserEmailId(email);
 
-      if (!paymentProfile) return ResponseHandler.error(res, 'Payment profile not found', 404);
+      //check for provider
+      let checkProvider = await PaymentProvidersRepository.getByName(providers_name);
+
+      //make the vars for providers
+      const PaymentProvider = checkProvider?.providers_name;
+      const PaymentProviderId = checkProvider?.id;
+
+      //
+      if (!checkProvider) {
+        return ResponseHandler.error(
+          res,
+          'This payment provider is not currently set up in our system.',
+          400,
+        );
+      }
+      //
+
+      if (!customerProfile) return ResponseHandler.error(res, 'Customer Profile not found', 404);
+
+      //
+      if (checkProvider?.id !== customerProfile?.payment_provider_id) {
+        return ResponseHandler.error(
+          res,
+          'This customer is not registered under the selected payment provider.',
+          400,
+        );
+      }
+      //
 
       const deleteResponse = await AuthorizeNetService.deleteCustomerProfile(
-        paymentProfile?.authorize_customer_profile_id,
+        PaymentProvider,
+        customerProfile?.authorize_customer_profile_id,
       );
 
       // Optional: delete local db records
-      await CustomerProfilesRepository.deleteByUserEmailId(email);
+      await CustomerProfilesRepository.deleteByUserEmailId(email, PaymentProviderId);
 
       if (deleteResponse.deleted) {
         return ResponseHandler.success(res, null, `Payment method ${email} deleted successfully`);

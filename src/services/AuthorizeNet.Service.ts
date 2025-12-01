@@ -410,9 +410,12 @@ export class AuthorizeNetService {
   /**
    * Delete customer profile
    */
-  static async deleteCustomerProfile(customerProfileId: string): Promise<{ deleted: boolean }> {
+  static async deleteCustomerProfile(
+    PaymentProvider: string,
+    customerProfileId: string,
+  ): Promise<{ deleted: boolean }> {
     if (!customerProfileId) throw new Error('customerProfileId required');
-    const merchantAuth = this.getMerchantAuthentication('fabzsolutions');
+    const merchantAuth = this.getMerchantAuthentication(PaymentProvider);
 
     const req = new APIContracts.DeleteCustomerProfileRequest();
     req.setMerchantAuthentication(merchantAuth);

@@ -32,10 +32,10 @@ export class CustomerProfilesRepository {
   }
 
   //
-  static async deleteByUserEmailId(user_email_id: string) {
+  static async deleteByUserEmailId(user_email_id: string, PaymentProviderId: number) {
     const res = await Database.connection.query(
-      `DELETE FROM payment_customer_profiles WHERE user_email_id = $1`,
-      [user_email_id],
+      `DELETE FROM payment_customer_profiles WHERE user_email_id = $1 and payment_provider_id = $2`,
+      [user_email_id, PaymentProviderId],
     );
     return res.rows[0];
   }
