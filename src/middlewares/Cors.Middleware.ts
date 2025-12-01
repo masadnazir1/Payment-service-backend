@@ -8,6 +8,7 @@ export class CorsMiddleware {
     'http://localhost',
     'http://localhost:',
     'http://127.0.0.1:5501',
+    'https://carebusinessconsultingsolutions.com',
 
     // add more here...
   ];
