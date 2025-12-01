@@ -187,9 +187,9 @@ export class PaymentsController {
   // Charge a payment profile
   async charge(req: AuthRequest, res: Response) {
     try {
-      const { providers_name, amount, email } = req.body;
+      const { payment_provider, amount, email } = req.body;
       //check the email
-      if (!email || !amount || !providers_name)
+      if (!email || !amount || !payment_provider)
         return ResponseHandler.error(
           res,
           'Missing user email ,providers_name or amount from request body',
@@ -201,7 +201,7 @@ export class PaymentsController {
       }
 
       //check for provider
-      let checkProvider = await PaymentProvidersRepository.getByName(providers_name);
+      let checkProvider = await PaymentProvidersRepository.getByName(payment_provider);
 
       //make the vars for providers
       const PaymentProvider = checkProvider?.providers_name;
@@ -269,7 +269,7 @@ export class PaymentsController {
     try {
       //
       const {
-        providers_name,
+        payment_provider,
         email,
         cardlast4,
         firstName,
@@ -283,7 +283,7 @@ export class PaymentsController {
         opaqueData,
       } = req.body;
 
-      if (!email || !firstName || !lastName || !providers_name)
+      if (!email || !firstName || !lastName || !payment_provider)
         return ResponseHandler.error(res, 'email,firstName,providers_name, lastName required', 400);
 
       //validate the email
@@ -296,7 +296,7 @@ export class PaymentsController {
       }
 
       //check for provider
-      let checkProvider = await PaymentProvidersRepository.getByName(providers_name);
+      let checkProvider = await PaymentProvidersRepository.getByName(payment_provider);
 
       //
 
@@ -380,12 +380,12 @@ export class PaymentsController {
   // Delete a payment profile
   async deletePaymentMethod(req: AuthRequest, res: Response) {
     try {
-      const { providers_name, email } = req.body;
+      const { payment_provider, email } = req.body;
 
       const customerProfile = await CustomerProfilesRepository.getByUserEmailId(email);
 
       //check for provider
-      let checkProvider = await PaymentProvidersRepository.getByName(providers_name);
+      let checkProvider = await PaymentProvidersRepository.getByName(payment_provider);
 
       //make the vars for providers
       const PaymentProvider = checkProvider?.providers_name;
