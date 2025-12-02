@@ -9,6 +9,7 @@ export class CorsMiddleware {
     'http://localhost:',
     'http://127.0.0.1:5501',
     'https://carebusinessconsultingsolutions.com',
+    'https://fabzsolutions.com/checkout/',
 
     // add more here...
   ];
