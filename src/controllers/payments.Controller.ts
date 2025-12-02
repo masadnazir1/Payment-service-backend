@@ -271,6 +271,26 @@ export class PaymentsController {
         'success',
       );
 
+      //realtorUplift service payload
+      const payload = {
+        first_name: paymentProfile?.first_name,
+        last_name: paymentProfile?.last_name,
+        email: paymentProfile?.email,
+        paid_amount: amount,
+        payment_date: new Date(Date.now()).toString(),
+        notes: `TRX_ID ${transactionResponse?.transactionId}`,
+      };
+
+      //udpate the trx info on realtoruplift
+      try {
+        // Attempt to update the transaction record
+        await UpdateRealtorRecordService.updateTransactionRecord(payload);
+      } catch (error) {
+        console.error(error);
+
+        console.error('Detailed Error:', error);
+      }
+
       return ResponseHandler.success(res, transaction, 'Charge successful');
     } catch (err: any) {
       return ResponseHandler.error(res, err.message || 'The transaction was unsuccessful.');
