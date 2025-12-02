@@ -8,6 +8,20 @@ export class CustomerProfilesRepository {
     );
     return res.rows[0];
   }
+  static async getByUserEmailIdMap(externalUserId: string) {
+    const res = await Database.connection.query(
+      `SELECT * FROM payment_customer_profiles WHERE user_email_id = $1`,
+      [externalUserId],
+    );
+
+    // Map payment_provider_id into a new array of numbers
+    const paymentProviderIds = res.rows.map((item) => item.payment_provider_id);
+
+    return {
+      ProviderIds: paymentProviderIds,
+      Response: res.rows[0],
+    };
+  }
 
   //create record
   static async create(

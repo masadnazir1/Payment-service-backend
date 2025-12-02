@@ -4,7 +4,6 @@ import { PaymentProvidersRepository } from '../repositories/Payment_providers.Re
 import { PaymentProfilesRepository } from '../repositories/PaymentProfiles.Repository.js';
 import { PaymentTransactionsRepository } from '../repositories/PaymentTransactions.Repository.js';
 import { AuthorizeNetService } from '../services/AuthorizeNet.Service.js';
-import { UpdateRealtorRecordService } from '../services/Update.ReatorRecord.service.js';
 import type { AuthRequest } from '../types/express.js';
 import { EmailValidator } from '../utils/Email.Validator.js';
 import { ResponseHandler } from '../utils/ResponseHandler.js';
@@ -49,13 +48,16 @@ export class PaymentsController {
         cardlast4,
       } = req.body;
 
+      //newCustomerProfile
+      let newCustomerProfile = null;
       //
       if (!email) return ResponseHandler.error(res, 'Missing email from body', 400);
       // Ensure customer profile exists
-      let customerProfile = await CustomerProfilesRepository.getByUserEmailId(email);
+      let customerProfile = await CustomerProfilesRepository.getByUserEmailIdMap(email);
       //check for provider
       let checkProvider = await PaymentProvidersRepository.getByName(payment_provider);
 
+      console.log('checkProvider', checkProvider);
       //
       //make the vars for providers
       const PaymentProvider = checkProvider?.providers_name;
@@ -81,17 +83,29 @@ export class PaymentsController {
         return ResponseHandler.error(res, 'invalid email', 400);
       }
 
-      if (customerProfile) {
+      if (customerProfile?.ProviderIds.includes(PaymentProviderId)) {
         return ResponseHandler.error(
           res,
-          'Customer profile creation failed because the profile already exists',
+          'We could not create a new customer profile because one already exists with this payment provider. You can use the existing profile to continue.',
           409,
         );
       }
 
       let authNetProfile: any = {};
 
-      if (!customerProfile) {
+      if (!customerProfile.Response) {
+        console.log('  !customerProfile');
+      }
+
+      // Check if this ID exists in the customer profiles
+      const existing = customerProfile?.ProviderIds.some(
+        (profile) => profile.payment_provider_id === PaymentProviderId,
+      );
+
+      console.log('existing', !existing);
+
+      if (!customerProfile?.Response || !existing) {
+        console.log('here is inside the fucntion');
         authNetProfile = await AuthorizeNetService.createCustomerProfile(
           PaymentProvider,
           email,
@@ -114,7 +128,7 @@ export class PaymentsController {
           );
         }
 
-        customerProfile = await CustomerProfilesRepository.create(
+        newCustomerProfile = await CustomerProfilesRepository.create(
           PaymentProviderId,
           email,
           authNetProfile.customerProfileId,
@@ -134,7 +148,7 @@ export class PaymentsController {
 
       const paymentProfile = await PaymentProfilesRepository.create(
         PaymentProviderId,
-        customerProfile.id,
+        newCustomerProfile.id,
         paymentProfileIdValue,
         cardlast4,
         email,
@@ -170,8 +184,10 @@ export class PaymentsController {
         },
       };
 
+      console.log('payload', payload.data.city);
+
       // //call the realtorUplift service now
-      await UpdateRealtorRecordService.sendPaymentProfile(payload);
+      // await UpdateRealtorRecordService.sendPaymentProfile(payload);
 
       return ResponseHandler.success(
         res,
@@ -225,16 +241,21 @@ export class PaymentsController {
 
       if (Number(amount) < 1) return ResponseHandler.error(res, 'amount must be >= 1', 400);
 
-      const customerProfile = await CustomerProfilesRepository.getByUserEmailId(email);
+      const customerProfile = await CustomerProfilesRepository.getByUserEmailIdMap(email);
 
       if (!customerProfile) return ResponseHandler.error(res, 'Customer profile not found', 404);
 
-      const paymentProfile = await PaymentProfilesRepository.customerProfileId(customerProfile?.id);
+      const paymentProfile = await PaymentProfilesRepository.customerProfileId(
+        customerProfile?.Response?.id,
+      );
 
       if (!paymentProfile) return ResponseHandler.error(res, 'Payment profile not found', 404);
 
+      // Find if a profile already exists for the requested payment provider
+      const findCorrectId = customerProfile?.ProviderIds?.find((id) => id === PaymentProviderId);
+
       //
-      if (checkProvider?.id !== customerProfile?.payment_provider_id) {
+      if (checkProvider?.id !== findCorrectId) {
         return ResponseHandler.error(
           res,
           'This customer is not registered under the selected payment provider.',
@@ -244,7 +265,7 @@ export class PaymentsController {
 
       const transactionResponse = await AuthorizeNetService.chargePayment(
         PaymentProvider,
-        customerProfile.authorize_customer_profile_id,
+        customerProfile.Response?.authorize_customer_profile_id,
         paymentProfile.authorize_payment_profile_id,
         Number(amount),
       );
@@ -252,7 +273,7 @@ export class PaymentsController {
       const transaction = await PaymentTransactionsRepository.create(
         PaymentProviderId,
         email,
-        customerProfile.id,
+        customerProfile.Response?.id,
         paymentProfile.id,
         Number(amount),
         transactionResponse?.transactionId,
@@ -313,17 +334,20 @@ export class PaymentsController {
         );
       }
 
-      const customerProfile = await CustomerProfilesRepository.getByUserEmailId(email);
+      const customerProfile = await CustomerProfilesRepository.getByUserEmailIdMap(email);
       //
       if (!customerProfile) return ResponseHandler.error(res, 'Customer profile not found', 404);
 
-      const paymentProfile = await PaymentProfilesRepository.customerProfileId(customerProfile?.id);
+      const paymentProfile = await PaymentProfilesRepository.customerProfileId(
+        customerProfile?.Response?.id,
+      );
 
       if (!paymentProfile) return ResponseHandler.error(res, 'Payment profile not found', 404);
 
       //
+      const findCorrectId = customerProfile?.ProviderIds?.find((id) => id === PaymentProviderId);
       //
-      if (checkProvider?.id !== customerProfile?.payment_provider_id) {
+      if (checkProvider?.id !== findCorrectId) {
         return ResponseHandler.error(
           res,
           'This customer is not registered under the selected payment provider.',
@@ -333,7 +357,7 @@ export class PaymentsController {
       //
       const updated = await AuthorizeNetService.updatePaymentProfile(
         PaymentProvider,
-        customerProfile.authorize_customer_profile_id,
+        customerProfile?.Response?.authorize_customer_profile_id,
         paymentProfile.authorize_payment_profile_id,
         {
           firstName,
@@ -354,7 +378,7 @@ export class PaymentsController {
       // Persist payment profile in DB
       const UpdatePaymentProfile = await PaymentProfilesRepository.updateProfile(
         PaymentProviderId,
-        customerProfile?.id,
+        customerProfile?.Response?.id,
         paymentProfile.authorize_payment_profile_id,
         cardlast4,
         email,
@@ -382,7 +406,7 @@ export class PaymentsController {
     try {
       const { payment_provider, email } = req.body;
 
-      const customerProfile = await CustomerProfilesRepository.getByUserEmailId(email);
+      const customerProfile = await CustomerProfilesRepository.getByUserEmailIdMap(email);
 
       //check for provider
       let checkProvider = await PaymentProvidersRepository.getByName(payment_provider);
@@ -403,8 +427,10 @@ export class PaymentsController {
 
       if (!customerProfile) return ResponseHandler.error(res, 'Customer Profile not found', 404);
 
+      const findCorrectId = customerProfile?.ProviderIds?.find((id) => id === PaymentProviderId);
+
       //
-      if (checkProvider?.id !== customerProfile?.payment_provider_id) {
+      if (checkProvider?.id !== findCorrectId) {
         return ResponseHandler.error(
           res,
           'This customer is not registered under the selected payment provider.',
@@ -415,7 +441,7 @@ export class PaymentsController {
 
       const deleteResponse = await AuthorizeNetService.deleteCustomerProfile(
         PaymentProvider,
-        customerProfile?.authorize_customer_profile_id,
+        customerProfile?.Response?.authorize_customer_profile_id,
       );
 
       // Optional: delete local db records
