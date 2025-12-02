@@ -4,6 +4,7 @@ import { PaymentProvidersRepository } from '../repositories/Payment_providers.Re
 import { PaymentProfilesRepository } from '../repositories/PaymentProfiles.Repository.js';
 import { PaymentTransactionsRepository } from '../repositories/PaymentTransactions.Repository.js';
 import { AuthorizeNetService } from '../services/AuthorizeNet.Service.js';
+import { UpdateRealtorRecordService } from '../services/Update.ReatorRecord.service.js';
 import type { AuthRequest } from '../types/express.js';
 import { EmailValidator } from '../utils/Email.Validator.js';
 import { ResponseHandler } from '../utils/ResponseHandler.js';
@@ -57,7 +58,6 @@ export class PaymentsController {
       //check for provider
       let checkProvider = await PaymentProvidersRepository.getByName(payment_provider);
 
-      console.log('checkProvider', checkProvider);
       //
       //make the vars for providers
       const PaymentProvider = checkProvider?.providers_name;
@@ -93,19 +93,12 @@ export class PaymentsController {
 
       let authNetProfile: any = {};
 
-      if (!customerProfile.Response) {
-        console.log('  !customerProfile');
-      }
-
       // Check if this ID exists in the customer profiles
       const existing = customerProfile?.ProviderIds.some(
         (profile) => profile.payment_provider_id === PaymentProviderId,
       );
 
-      console.log('existing', !existing);
-
       if (!customerProfile?.Response || !existing) {
-        console.log('here is inside the fucntion');
         authNetProfile = await AuthorizeNetService.createCustomerProfile(
           PaymentProvider,
           email,
@@ -184,10 +177,8 @@ export class PaymentsController {
         },
       };
 
-      console.log('payload', payload.data.city);
-
       // //call the realtorUplift service now
-      // await UpdateRealtorRecordService.sendPaymentProfile(payload);
+      await UpdateRealtorRecordService.sendPaymentProfile(payload);
 
       return ResponseHandler.success(
         res,
