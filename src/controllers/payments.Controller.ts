@@ -7,6 +7,7 @@ import { AuthorizeNetService } from '../services/AuthorizeNet.Service.js';
 import { UpdateRealtorRecordService } from '../services/Update.ReatorRecord.service.js';
 import type { AuthRequest } from '../types/express.js';
 import { EmailValidator } from '../utils/Email.Validator.js';
+import { PaymentError } from '../utils/PaymentError.js';
 import { ResponseHandler } from '../utils/ResponseHandler.js';
 
 export class PaymentsController {
@@ -192,9 +193,16 @@ export class PaymentsController {
   }
 
   // Charge a payment profile
+  // Charge a payment profile
   async charge(req: AuthRequest, res: Response) {
+    // 🔹 Hoisted vars for catch scope
+    let PaymentProviderId: number | undefined;
+    let customerProfile: any;
+    let paymentProfile: any;
+
     try {
       const { payment_provider, amount, email } = req.body;
+
       //check the email
       if (!email || !amount || !payment_provider)
         return ResponseHandler.error(
@@ -208,14 +216,13 @@ export class PaymentsController {
       }
 
       //check for provider
-      let checkProvider = await PaymentProvidersRepository.getByName(payment_provider);
+      const checkProvider = await PaymentProvidersRepository.getByName(payment_provider);
 
       //make the vars for providers
       const PaymentProvider = checkProvider?.providers_name;
-      const PaymentProviderId = checkProvider?.id;
+      PaymentProviderId = checkProvider?.id;
 
-      //
-      if (!checkProvider) {
+      if (!checkProvider || !PaymentProviderId) {
         return ResponseHandler.error(
           res,
           'Missing payment_provider or invalid payment_provider requested',
@@ -232,20 +239,21 @@ export class PaymentsController {
 
       if (Number(amount) < 1) return ResponseHandler.error(res, 'amount must be >= 1', 400);
 
-      const customerProfile = await CustomerProfilesRepository.getByUserEmailIdMap(email);
+      customerProfile = await CustomerProfilesRepository.getByUserEmailIdMap(email);
 
       if (!customerProfile) return ResponseHandler.error(res, 'Customer profile not found', 404);
 
-      const paymentProfile = await PaymentProfilesRepository.customerProfileId(
+      paymentProfile = await PaymentProfilesRepository.customerProfileId(
         customerProfile?.Response?.id,
       );
 
       if (!paymentProfile) return ResponseHandler.error(res, 'Payment profile not found', 404);
 
       // Find if a profile already exists for the requested payment provider
-      const findCorrectId = customerProfile?.ProviderIds?.find((id) => id === PaymentProviderId);
+      const findCorrectId = customerProfile?.ProviderIds?.find(
+        (id: number) => id === PaymentProviderId,
+      );
 
-      //
       if (checkProvider?.id !== findCorrectId) {
         return ResponseHandler.error(
           res,
@@ -254,7 +262,7 @@ export class PaymentsController {
         );
       }
 
-      const transactionResponse = await AuthorizeNetService.chargePayment(
+      const result = await AuthorizeNetService.chargePayment(
         PaymentProvider,
         customerProfile.Response?.authorize_customer_profile_id,
         paymentProfile.authorize_payment_profile_id,
@@ -267,8 +275,8 @@ export class PaymentsController {
         customerProfile.Response?.id,
         paymentProfile.id,
         Number(amount),
-        transactionResponse?.transactionId,
-        'success',
+        result.transactionId,
+        result.transactionStatus,
       );
 
       //realtorUplift service payload
@@ -278,24 +286,45 @@ export class PaymentsController {
         email: paymentProfile?.email,
         paid_amount: amount,
         payment_date: new Date(Date.now()).toString(),
-        notes: `TRX_ID ${transactionResponse?.transactionId}`,
+        notes: `TRX_ID ${result?.transactionId}`,
       };
 
       //udpate the trx info on realtoruplift
       try {
-        // Attempt to update the transaction record
         await UpdateRealtorRecordService.updateTransactionRecord(payload);
       } catch (error) {
-        console.error(error);
-
-        console.error('Detailed Error:', error);
+        console.error('RealtorUplift update failed:', error);
       }
 
       return ResponseHandler.success(res, transaction, 'Charge successful');
     } catch (err: any) {
-      return ResponseHandler.error(res, err.message || 'The transaction was unsuccessful.');
+      if (err instanceof PaymentError && err.gatewayCode === '11') {
+        // Handle duplicate transaction
+        return ResponseHandler.error(res, 'Duplicate transaction already submitted', 409);
+      }
+
+      //  Handle known payment failures (declined / error / held)
+      if (err instanceof PaymentError) {
+        await PaymentTransactionsRepository.create(
+          PaymentProviderId!,
+          req.body.email,
+          customerProfile?.Response?.id ?? null,
+          paymentProfile?.id ?? null,
+          Number(req.body.amount),
+          err.transactionId ?? 'GATEWAY_NO_TRANSACTION_ID',
+          err.status, // declined | error | held_for_review
+        );
+
+        return ResponseHandler.error(res, err.message, err.code);
+      }
+
+      //  Unexpected system / gateway crash
+      console.error('Payment crash:', err);
+
+      return ResponseHandler.error(res, err.message || 'The transaction was unsuccessful.', 500);
     }
   }
+
   // Update customer payment method (card + billing)
   async updatePaymentMethod(req: AuthRequest, res: Response) {
     try {

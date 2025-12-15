@@ -1,4 +1,5 @@
 import pkg, { APIContracts } from 'authorizenet';
+import { PaymentError } from '../utils/PaymentError.js';
 const { APIControllers } = pkg;
 
 type OpaqueData = { dataDescriptor: string; dataValue: string };
@@ -261,14 +262,12 @@ export class AuthorizeNetService {
    * charge a user profile
    */
   static async chargePayment(
-    //
     providers_name: string,
-    //
     customerProfileId: string,
     paymentProfileId: string,
     amount: number,
     opts?: { refId?: string },
-  ): Promise<{ transactionId: string }> {
+  ): Promise<{ transactionId: string; code: number; transactionStatus: string; message?: string }> {
     if (!customerProfileId || !paymentProfileId) {
       throw new Error('customerProfileId and paymentProfileId required');
     }
@@ -294,25 +293,76 @@ export class AuthorizeNetService {
     createRequest.setMerchantAuthentication(merchantAuth);
 
     const ctrl = new APIControllers.CreateTransactionController(createRequest.getJSON());
-    //set the env
     ctrl.setEnvironment(AuthorizeNetService.endPoint());
 
     const raw = (await this.executeController<any>(ctrl)) as any;
     const response = new APIContracts.CreateTransactionResponse(raw);
 
-    if (
-      response.getMessages() &&
-      response.getMessages().getResultCode() === APIContracts.MessageTypeEnum.OK
-    ) {
-      const transId = response.getTransactionResponse()?.getTransId();
-      return { transactionId: transId };
+    // -------- STRICT  LOGIC START (only addition) --------
+    const tr = response.getTransactionResponse();
+
+    //check api
+    const apiOk = response.getMessages()?.getResultCode() === APIContracts.MessageTypeEnum.OK;
+
+    // Handle general API failure
+    if (!apiOk || !tr) {
+      // Check for duplicate transaction
+      const transactionErrors = tr?.getErrors?.()?.getError?.() ?? [];
+      const isDuplicate = transactionErrors.some((e: any) => e.errorCode === '11');
+
+      if (isDuplicate) {
+        // Option 1: Treat as successful because it's already processed
+        // return {
+        //   transactionId: tr.getTransId() || 'DUPLICATE_TRANSACTION',
+        //   code: 1,
+        //   transactionStatus: 'approved',
+        //   message: 'Duplicate transaction detected, already processed.',
+        // };
+
+        //  Throw a PaymentError specifically for duplicate
+        throw new PaymentError(
+          409,
+          '11',
+          'duplicate',
+          tr.getTransId(),
+          'Duplicate transaction submitted',
+        );
+      }
+
+      throw new Error('Invalid payment gateway response');
     }
 
-    // extract detailed error
-    const msg = response.getMessages()?.getMessage?.()[0];
-    const code = msg?.getCode?.();
-    const text = msg?.getText?.();
-    throw new Error(code ? `${code}: ${text}` : text || 'Transaction failed');
+    const responseCode = tr.getResponseCode();
+    const transId = tr.getTransId();
+
+    /**
+     * Authorize.Net responseCode meanings
+     * 1 = Approved
+     * 2 = Declined
+     * 3 = Error
+     * 4 = Held for Review
+     */
+
+    switch (responseCode) {
+      case '1':
+        return {
+          transactionId: transId,
+          code: 1,
+          transactionStatus: 'approved',
+        };
+
+      case '2':
+        throw new PaymentError(402, '2', 'declined', transId, 'Transaction declined');
+
+      case '3':
+        throw new PaymentError(502, '3', 'error', transId, 'Transaction error');
+
+      case '4':
+        throw new PaymentError(202, '4', 'held_for_review', transId, 'Transaction held for review');
+
+      default:
+        throw new Error(`Unknown response code: ${responseCode}`);
+    }
   }
 
   /**
