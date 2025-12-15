@@ -313,7 +313,7 @@ export class PaymentsController {
         customer: {
           name: `${paymentProfile?.first_name}  ${paymentProfile?.last_name}`,
           email: `${paymentProfile?.email}`,
-          phone: '+1 (555) 234-5678',
+          phone: paymentProfile?.phonenumber,
         },
         address: {
           street: `${paymentProfile?.streetnumber}`,
