@@ -12,6 +12,8 @@ export class DomainAuthMiddleware {
   static handle(req: Request, res: Response, next: NextFunction) {
     const origin = req.headers.origin;
 
+    console.log('req.header', req.header);
+
     if (!origin || !DomainAuthMiddleware.allowedDomains.includes(origin)) {
       return res.status(403).json({
         success: false,

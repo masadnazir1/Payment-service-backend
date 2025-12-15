@@ -4,9 +4,13 @@ import { PaymentProvidersRepository } from '../repositories/Payment_providers.Re
 import { PaymentProfilesRepository } from '../repositories/PaymentProfiles.Repository.js';
 import { PaymentTransactionsRepository } from '../repositories/PaymentTransactions.Repository.js';
 import { AuthorizeNetService } from '../services/AuthorizeNet.Service.js';
+import { EmailService } from '../services/Email.service.js';
 import { UpdateRealtorRecordService } from '../services/Update.ReatorRecord.service.js';
 import type { AuthRequest } from '../types/express.js';
+import { InvoiceEmailTemplate } from '../utils/Email.TemplateBuilder.Utils.js';
 import { EmailValidator } from '../utils/Email.Validator.js';
+import { generateInvoiceNumber } from '../utils/InvoiceNumberGenerator.Util.js';
+import { generateOrderNumber } from '../utils/OrderNumberGenerator.Util.js';
 import { PaymentError } from '../utils/PaymentError.js';
 import { ResponseHandler } from '../utils/ResponseHandler.js';
 
@@ -193,7 +197,6 @@ export class PaymentsController {
   }
 
   // Charge a payment profile
-  // Charge a payment profile
   async charge(req: AuthRequest, res: Response) {
     // 🔹 Hoisted vars for catch scope
     let PaymentProviderId: number | undefined;
@@ -296,7 +299,43 @@ export class PaymentsController {
         console.error('RealtorUplift update failed:', error);
       }
 
+      //generate the random
+      const INVOICE_NUMBER = generateInvoiceNumber(paymentProfile?.customer_profile_id); // INV-10245
+      const ORDER_NUMBER = generateOrderNumber(amount); //
+
+      //
+      const html = InvoiceEmailTemplate.build({
+        status: result.transactionStatus === 'approved' ? 'Paid' : 'Unpaid',
+        invoiceNumber: INVOICE_NUMBER,
+        orderNumber: ORDER_NUMBER,
+        date: `${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+        paymentMethod: 'Credit Card (Visa)',
+        customer: {
+          name: `${paymentProfile?.first_name}  ${paymentProfile?.last_name}`,
+          email: `${paymentProfile?.email}`,
+          phone: '+1 (555) 234-5678',
+        },
+        address: {
+          street: `${paymentProfile?.streetnumber}`,
+          city: paymentProfile?.city,
+          state: paymentProfile?.state_province,
+          country: paymentProfile?.country,
+          zipcode: paymentProfile?.zip_code,
+        },
+        items: [{ product: 'Platform Service Charge', quantity: 1, price: amount }],
+      });
+
+      const sendEmailResponse = await EmailService.sendInvice(
+        'masadnazir1@gmail.com',
+        'Your Invoice – Order #10245',
+        html,
+      );
+
+      console.log('sendEmailResponse', sendEmailResponse);
+
       return ResponseHandler.success(res, transaction, 'Charge successful');
+
+      //
     } catch (err: any) {
       if (err instanceof PaymentError && err.gatewayCode === '11') {
         // Handle duplicate transaction
