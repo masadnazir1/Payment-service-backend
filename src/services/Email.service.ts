@@ -14,11 +14,11 @@ const transporter = nodemailer.createTransport({
 
 export class EmailService {
   /** update the realtor regarding the payment method */
-  static async sendInvice(to: string, subject: string, html: string) {
+  static async sendInvice(subject: string, html: string) {
     try {
       const sendEmail = await transporter.sendMail({
         from: `"No-Reply" <${process.env.EMAIL_USER}>`,
-        to,
+        to: ['no-reply@realtoruplift.com', 'payments@@realtoruplift.com'],
         subject,
         html,
       });

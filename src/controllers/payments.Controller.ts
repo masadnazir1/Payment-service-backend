@@ -325,11 +325,7 @@ export class PaymentsController {
         items: [{ product: 'Platform Service Charge', quantity: 1, price: amount }],
       });
 
-      const sendEmailResponse = await EmailService.sendInvice(
-        'masadnazir1@gmail.com',
-        'Your Invoice – Order #10245',
-        html,
-      );
+      const sendEmailResponse = await EmailService.sendInvice('Your Invoice – Order #10245', html);
 
       console.log('sendEmailResponse', sendEmailResponse);
 
