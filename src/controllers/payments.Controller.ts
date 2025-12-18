@@ -15,6 +15,10 @@ import { PaymentError } from '../utils/PaymentError.js';
 import { ResponseHandler } from '../utils/ResponseHandler.js';
 
 export class PaymentsController {
+  private static isLive(): boolean {
+    return process.env.AUTHORIZE_NET_ENVIRONMENT === 'LIVE';
+  }
+
   // List all payment methods for an external user
   async list(req: AuthRequest, res: Response) {
     try {
@@ -198,7 +202,7 @@ export class PaymentsController {
 
   // Charge a payment profile
   async charge(req: AuthRequest, res: Response) {
-    // 🔹 Hoisted vars for catch scope
+    //  Hoisted vars for catch scope
     let PaymentProviderId: number | undefined;
     let customerProfile: any;
     let paymentProfile: any;
@@ -324,10 +328,14 @@ export class PaymentsController {
         },
         items: [{ product: 'Platform Service Charge', quantity: 1, price: amount }],
       });
-
-      const sendEmailResponse = await EmailService.sendInvice('Your Invoice – Order #10245', html);
-
-      console.log('sendEmailResponse', sendEmailResponse);
+      //send only in the prod and on approved
+      if (PaymentsController.isLive() && result.transactionStatus === 'approved') {
+        try {
+          await EmailService.sendInvice(`Your Invoice – Order #${ORDER_NUMBER}`, html);
+        } catch (emailErr) {
+          console.error('Invoice email failed:', emailErr);
+        }
+      }
 
       return ResponseHandler.success(res, transaction, 'Charge successful');
 
