@@ -345,6 +345,10 @@ export class PaymentsController {
         // Handle duplicate transaction
         return ResponseHandler.error(res, 'Duplicate transaction already submitted', 409);
       }
+      if (err instanceof PaymentError && err.gatewayCode === '6') {
+        // Handle duplicate transaction
+        return ResponseHandler.error(res, 'The credit card number is invalid.', 400);
+      }
 
       //  Handle known payment failures (declined / error / held)
       if (err instanceof PaymentError) {

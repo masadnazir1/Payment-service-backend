@@ -309,16 +309,9 @@ export class AuthorizeNetService {
       // Check for duplicate transaction
       const transactionErrors = tr?.getErrors?.()?.getError?.() ?? [];
       const isDuplicate = transactionErrors.some((e: any) => e.errorCode === '11');
+      const isInvalidCard = transactionErrors.some((e: any) => e.errorCode === '6');
 
       if (isDuplicate) {
-        // Option 1: Treat as successful because it's already processed
-        // return {
-        //   transactionId: tr.getTransId() || 'DUPLICATE_TRANSACTION',
-        //   code: 1,
-        //   transactionStatus: 'approved',
-        //   message: 'Duplicate transaction detected, already processed.',
-        // };
-
         //  Throw a PaymentError specifically for duplicate
         throw new PaymentError(
           409,
@@ -326,6 +319,17 @@ export class AuthorizeNetService {
           'duplicate',
           tr.getTransId(),
           'Duplicate transaction submitted',
+        );
+      }
+      //"The credit card number is invalid."
+      if (isInvalidCard) {
+        //  Throw a PaymentError specifically for duplicate
+        throw new PaymentError(
+          400,
+          '6',
+          'invalid card',
+          tr.getTransId(),
+          'The credit card number is invalid.',
         );
       }
 
