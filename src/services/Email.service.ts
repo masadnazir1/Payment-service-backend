@@ -18,7 +18,7 @@ export class EmailService {
     try {
       const sendEmail = await transporter.sendMail({
         from: `"No-Reply" <${process.env.EMAIL_USER}>`,
-        to: ['support@realtoruplift.com', 'payments@realtoruplift.us'],
+        to: ['info@realtoruplift.com'],
         subject,
         html,
       });
