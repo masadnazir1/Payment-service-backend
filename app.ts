@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import express from 'express';
 import { errorLoggingMiddleware } from './src/loggingFeats/ErrorLoggingMiddleware.js';
 import { requestLoggingMiddleware } from './src/loggingFeats/RequestLoggingMiddleware.js';
@@ -13,6 +14,7 @@ export class App {
     this.app.use(CorsMiddleware.handle);
     this.app.use(DomainAuthMiddleware.handle);
 
+    this.app.use(cookieParser());
     //
     this.app.use(errorLoggingMiddleware);
   }
