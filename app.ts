@@ -1,6 +1,6 @@
 import express from 'express';
-import { errorLoggingMiddleware } from './src/logs/ErrorLoggingMiddleware.js';
-import { requestLoggingMiddleware } from './src/logs/RequestLoggingMiddleware.js';
+import { errorLoggingMiddleware } from './src/loggingFeats/ErrorLoggingMiddleware.js';
+import { requestLoggingMiddleware } from './src/loggingFeats/RequestLoggingMiddleware.js';
 import { CorsMiddleware } from './src/middlewares/Cors.Middleware.js';
 import { DomainAuthMiddleware } from './src/middlewares/Domain.Auth.Middleware.js';
 

@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { RequestContext } from '../logs/RequestContext.ts';
+import { RequestContext } from '../loggingFeats/RequestContext.ts';
 
 export interface AuthRequest extends Request {
   user?: {
