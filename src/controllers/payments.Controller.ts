@@ -42,22 +42,22 @@ export class PaymentsController {
 
   // Add a new payment method
   async addPaymentMethod(req: AuthRequest, res: Response) {
-    try {
-      const {
-        payment_provider,
-        email,
-        firstName,
-        lastName,
-        streetNumber,
-        city,
-        state,
-        zipCode,
-        country,
-        phoneNumber,
-        opaqueData,
-        cardlast4,
-      } = req.body;
+    const {
+      payment_provider,
+      email,
+      firstName,
+      lastName,
+      streetNumber,
+      city,
+      state,
+      zipCode,
+      country,
+      phoneNumber,
+      opaqueData,
+      cardlast4,
+    } = req.body;
 
+    try {
       //newCustomerProfile
       let newCustomerProfile = null;
       //

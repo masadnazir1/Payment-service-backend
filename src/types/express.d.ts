@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { RequestContext } from '../logs/RequestContext.ts';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -6,4 +7,10 @@ export interface AuthRequest extends Request {
     email?: string;
     [key: string]: any; // optional extra fields
   };
+}
+
+declare module 'express-serve-static-core' {
+  interface Request {
+    ctx: RequestContext;
+  }
 }
