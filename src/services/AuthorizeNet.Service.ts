@@ -20,32 +20,48 @@ export class AuthorizeNetService {
     return process.env.AUTHORIZE_NET_ENVIRONMENT === 'LIVE';
   }
 
-  private static changeTheEnvKeys(PaymentProvider: string) {
-    //check the provider and return the right env files
-    if (PaymentProvider === 'fabzsolutions' && this.isLive()) {
-      return {
+  private static changeTheEnvKeys(paymentProvider: string) {
+    const LIVE = {
+      fabzsolutions: {
         LOGIN_ID: process.env.AUTHORIZE_NET_API_LOGIN_ID_LIVE__FABZ,
         TRANSACTION_ID: process.env.AUTHORIZE_NET_TRANSACTION_KEY_LIVE__FABZ,
-      };
-    } else if (PaymentProvider === 'fabzsolutions' && !this.isLive()) {
-      return {
-        LOGIN_ID: process.env.AUTHORIZE_NET_API_LOGIN_ID_TEST,
-        TRANSACTION_ID: process.env.AUTHORIZE_NET_TRANSACTION_KEY_TEST,
-      };
-    }
-
-    //check for carebusinessconsultingsolutions
-    if (PaymentProvider === 'carebusinessconsultingsolutions' && this.isLive()) {
-      return {
+      },
+      carebusinessconsultingsolutions: {
         LOGIN_ID: process.env.AUTHORIZE_NET_API_LOGIN_ID_LIVE__CAREBUZ,
         TRANSACTION_ID: process.env.AUTHORIZE_NET_TRANSACTION_KEY_LIVE__CAREBUZ,
-      };
-    } else if (PaymentProvider === 'carebusinessconsultingsolutions' && !this.isLive()) {
-      return {
+      },
+      chase: {
+        LOGIN_ID: process.env.AUTHORIZE_NET_API_LOGIN_ID_LIVE__CHASE,
+        TRANSACTION_ID: process.env.AUTHORIZE_NET_TRANSACTION_KEY_LIVE__CHASE,
+      },
+    } as const;
+
+    const TEST = {
+      // If test is same for all, you can keep it simple:
+      default: {
         LOGIN_ID: process.env.AUTHORIZE_NET_API_LOGIN_ID_TEST,
         TRANSACTION_ID: process.env.AUTHORIZE_NET_TRANSACTION_KEY_TEST,
-      };
+      },
+    } as const;
+
+    type Provider = keyof typeof LIVE;
+
+    const isProvider = (p: string): p is Provider => p in LIVE;
+
+    if (!isProvider(paymentProvider)) {
+      throw new Error(
+        `Unknown payment provider provided to the payment service: ${paymentProvider}`,
+      );
     }
+
+    const configuration = this.isLive() ? LIVE[paymentProvider] : TEST.default;
+
+    // Optional: enforce env existence at runtime (recommended)
+    if (!configuration.LOGIN_ID || !configuration.TRANSACTION_ID) {
+      throw new Error(`Missing env vars for provider=${paymentProvider} live=${this.isLive()}`);
+    }
+
+    return configuration;
   }
 
   //build the endpoint from contants
@@ -298,6 +314,17 @@ export class AuthorizeNetService {
     const raw = (await this.executeController<any>(ctrl)) as any;
     const response = new APIContracts.CreateTransactionResponse(raw);
 
+    //  API-level errors (keys, fields, auth)
+    const messages = response.getMessages();
+
+    if (!messages || messages.getResultCode() !== APIContracts.MessageTypeEnum.OK) {
+      const apiErrors = messages?.getMessage?.() ?? [];
+
+      apiErrors.forEach((err: any) => {
+        throw new Error(`Gateway Error:  ${err.getCode()}, ${err.getText()} `);
+      });
+    }
+
     // -------- STRICT  LOGIC START (only addition) --------
     const tr = response.getTransactionResponse();
 
@@ -306,6 +333,10 @@ export class AuthorizeNetService {
 
     // Handle general API failure
     if (!apiOk || !tr) {
+      const transactionGeneralErrors = response?.getMessages()?.getMessage();
+
+      console.log(transactionGeneralErrors);
+
       // Check for duplicate transaction
       const transactionErrors = tr?.getErrors?.()?.getError?.() ?? [];
       const isDuplicate = transactionErrors.some((e: any) => e.errorCode === '11');
