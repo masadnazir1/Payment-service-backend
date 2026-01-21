@@ -11,10 +11,7 @@ export class App {
     this.app.use(express.json());
     this.app.use(requestLoggingMiddleware);
     this.app.use(CorsMiddleware.handle);
-    // this.app.use(DomainAuthMiddleware.handle);
-
     this.app.use(cookieParser());
-    //
     this.app.use(errorLoggingMiddleware);
   }
 

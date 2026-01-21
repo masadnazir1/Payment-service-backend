@@ -5,7 +5,7 @@ import { PaymentProfilesRepository } from '../repositories/PaymentProfiles.Repos
 import { PaymentTransactionsRepository } from '../repositories/PaymentTransactions.Repository.js';
 import { AuthorizeNetService } from '../services/AuthorizeNet.Service.js';
 import { EmailService } from '../services/Email.service.js';
-import { UpdateRealtorRecordService } from '../services/Update.ReatorRecord.service.js';
+import { UpdateRealtorRecordService } from '../services/Update.ThirdParty.service.js';
 import type { AuthRequest } from '../types/express.js';
 import { InvoiceEmailTemplate } from '../utils/Email.TemplateBuilder.Utils.js';
 import { EmailValidator } from '../utils/Email.Validator.js';
@@ -44,6 +44,8 @@ export class PaymentsController {
   async addPaymentMethod(req: AuthRequest, res: Response) {
     const {
       payment_provider,
+      //param to inform the site accordingly
+      callbackSite = 'realtoruplift',
       email,
       firstName,
       lastName,
@@ -187,7 +189,7 @@ export class PaymentsController {
       };
 
       // //call the realtorUplift service now
-      await UpdateRealtorRecordService.sendPaymentProfile(payload);
+      await UpdateRealtorRecordService.sendPaymentProfile(payload, callbackSite);
 
       return ResponseHandler.success(
         res,
@@ -208,7 +210,7 @@ export class PaymentsController {
     let paymentProfile: any;
 
     try {
-      const { payment_provider, amount, email } = req.body;
+      const { payment_provider, amount, email, callbackSite } = req.body;
 
       //check the email
       if (!email || !amount || !payment_provider)
@@ -298,7 +300,7 @@ export class PaymentsController {
 
       //udpate the trx info on realtoruplift
       try {
-        await UpdateRealtorRecordService.updateTransactionRecord(payload);
+        await UpdateRealtorRecordService.updateTransactionRecord(payload, callbackSite);
       } catch (error) {
         console.error('RealtorUplift update failed:', error);
       }

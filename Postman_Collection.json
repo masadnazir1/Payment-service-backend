@@ -1,0 +1,799 @@
+{
+  "info": {
+    "_postman_id": "payment-service-api-collection",
+    "name": "Payment Service API - CallAxis",
+    "description": "Complete API collection for Payment Service Backend with all endpoints, examples, and test cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup Instructions",
+      "item": [
+        {
+          "name": "Environment Variables",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://docs.callaxis.com/payment-service/setup",
+              "protocol": "https",
+              "host": ["docs", "callaxis", "com"],
+              "path": ["payment-service", "setup"]
+            },
+            "description": "# Environment Setup\n\nCreate these environment variables in Postman:\n\n```json\n{\n  \"baseUrl\": \"http://localhost:9441/api/v1\",\n  \"apiKey\": \"your-api-key-here\",\n  \"email\": \"john.doe@example.com\",\n  \"paymentProvider\": \"fabzsolutions\",\n  \"amount\": \"99.99\",\n  \"planName\": \"starter\",\n  \"vendorName\": \"callaxis\"\n}\n```\n\n## Headers Required for All Requests:\n- `X-API-Key`: {{apiKey}}\n- `Content-Type`: application/json"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Methods",
+      "description": "Endpoints for managing customer payment methods",
+      "item": [
+        {
+          "name": "1. List Payment Methods",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test script\n",
+                  "pm.test(\"Status code is 200\", function () {\n",
+                  "    pm.response.to.have.status(200);\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response has success flag\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.success).to.be.true;\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response contains data array\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.data).to.be.an('array');\n",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "payment-methods"]
+            },
+            "description": "Retrieve all payment methods for a specific user.\n\n**Parameters:**\n- `email` (required): User's email address\n\n**Response:**\n- Array of payment profiles with card details and billing information"
+          }
+        },
+        {
+          "name": "2. Add Payment Method (Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {\n",
+                  "    pm.response.to.have.status(201);\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response message is success\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.message).to.include('successfully created');\n",
+                  "});\n",
+                  "\n",
+                  "if (pm.response.code === 201) {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.environment.set(\"paymentProfileId\", jsonData.data.id);\n",
+                  "    pm.environment.set(\"authPaymentProfileId\", jsonData.data.authorize_payment_profile_id);\n",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_provider\": \"{{paymentProvider}}\",\n  \"email\": \"{{email}}\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"streetNumber\": \"123 Main Street\",\n  \"city\": \"New York\",\n  \"state\": \"NY\",\n  \"zipCode\": \"10001\",\n  \"country\": \"USA\",\n  \"phoneNumber\": \"2125551234\",\n  \"cardlast4\": \"1111\",\n  \"callbackSite\": \"realtoruplift\",\n  \"opaqueData\": {\n    \"dataDescriptor\": \"COMMON.ACCEPT.INAPP.PAYMENT\",\n    \"dataValue\": \"eyJkYXRhRGVzY3JpcHRvciI6IkNPTU1PTi5BQ0NFUlQuSU5BUFAuUEFZTUVOVCIsImRhdGFWYWx1ZSI6IjEyMzQ1Njc4OTAifQ==\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "payment-methods"]
+            },
+            "description": "Add a new payment method using Authorize.Net opaque payment token.\n\n**Note:** The `opaqueData` token should be obtained from Authorize.Net's Accept Hosted Form or your payment form integration.\n\n**Parameters:**\n- `payment_provider` (required): One of: fabzsolutions, carebusinessconsultingsolutions, chase\n- `email` (required): Customer's email\n- `firstName`, `lastName` (required): Name on card\n- `opaqueData` (required): Payment token with dataDescriptor and dataValue\n\n**Response:** Created payment profile with ID and Authorize.Net reference"
+          }
+        },
+        {
+          "name": "3. Charge Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n",
+                  "    pm.response.to.have.status(200);\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response contains transaction ID\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.data.transaction_id).to.exist;\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Transaction status is approved or declined\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(['approved', 'declined', 'error', 'held_for_review']).to.include(jsonData.data.transaction_status);\n",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_provider\": \"{{paymentProvider}}\",\n  \"email\": \"{{email}}\",\n  \"amount\": 99.99,\n  \"callbackSite\": \"realtoruplift\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/charge",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "charge"]
+            },
+            "description": "Process a payment charge using an existing payment method.\n\n**Behavior:**\n- Creates transaction record\n- Sends invoice email (if approved and production)\n- Notifies RealtorUplift with transaction details\n- Generates unique invoice and order numbers\n\n**Parameters:**\n- `payment_provider` (required): Payment provider\n- `email` (required): Customer email\n- `amount` (required): Amount in USD (minimum 1.00)\n- `callbackSite` (optional): Third-party site to notify\n\n**Possible Errors:**\n- 409: Duplicate transaction\n- 400: Invalid card, amount validation failed\n- 404: Customer or payment profile not found"
+          }
+        },
+        {
+          "name": "4. Update Payment Method",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n",
+                  "    pm.response.to.have.status(200);\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response message indicates update success\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.message).to.include('updated');\n",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_provider\": \"{{paymentProvider}}\",\n  \"email\": \"{{email}}\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"streetAddress\": \"456 Oak Avenue\",\n  \"city\": \"Boston\",\n  \"state\": \"MA\",\n  \"zipCode\": \"02101\",\n  \"country\": \"USA\",\n  \"phoneNumber\": \"6175551234\",\n  \"cardlast4\": \"4242\",\n  \"opaqueData\": {\n    \"dataDescriptor\": \"COMMON.ACCEPT.INAPP.PAYMENT\",\n    \"dataValue\": \"updated_token_from_form\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"]
+            },
+            "description": "Update an existing payment method with new card or billing information.\n\n**Note:** Requires new opaque data token from payment form.\n\n**Parameters:**\n- `payment_provider` (required): Payment provider\n- `email` (required): Customer email\n- `opaqueData` (required): New payment token\n- Other fields: Updated billing/cardholder info\n\n**Updates:**\n- Payment profile in database\n- Authorize.Net customer profile\n- Billing address and contact information"
+          }
+        },
+        {
+          "name": "5. Delete Payment Method",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n",
+                  "    pm.response.to.have.status(200);\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response contains success message\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.message).to.include('deleted');\n",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_provider\": \"{{paymentProvider}}\",\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"]
+            },
+            "description": "Delete a payment method and associated customer profile.\n\n**Cascading Delete:**\n- Removes from Authorize.Net\n- Deletes local database records\n- Customer profile becomes inactive\n\n**Parameters:**\n- `payment_provider` (required): Payment provider\n- `email` (required): Customer email\n\n**Note:** Cannot be reversed. New profile must be created to add payment again."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vendor Plans",
+      "description": "Endpoints for managing vendor pricing plans",
+      "item": [
+        {
+          "name": "1. List All Plans",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n",
+                  "    pm.response.to.have.status(200);\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response is array of plans\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.data).to.be.an('array');\n",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vendor-plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-plans"]
+            },
+            "description": "Retrieve all available vendor plans across all vendors.\n\n**Response:**\n- Array of all vendor plans with pricing"
+          }
+        },
+        {
+          "name": "2. Get Plans by Vendor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 404\", function () {\n",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);\n",
+                  "});\n",
+                  "\n",
+                  "if (pm.response.code === 200) {\n",
+                  "    pm.test(\"Response contains plan data\", function () {\n",
+                  "        var jsonData = pm.response.json();\n",
+                  "        pm.expect(jsonData.data).to.be.an('array');\n",
+                  "    });\n",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vendor-plans/vendor?vendorName={{vendorName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-plans", "vendor"],
+              "query": [
+                {
+                  "key": "vendorName",
+                  "value": "{{vendorName}}"
+                }
+              ]
+            },
+            "description": "Get all plans for a specific vendor.\n\n**Query Parameters:**\n- `vendorName` (required): Name of the vendor (case-insensitive)\n\n**Response:**\n- Array of plans for the specified vendor\n\n**Error:**\n- 404: No plans found for this vendor"
+          }
+        },
+        {
+          "name": "3. Get Single Plan by Name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 404\", function () {\n",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);\n",
+                  "});\n",
+                  "\n",
+                  "if (pm.response.code === 200) {\n",
+                  "    pm.test(\"Response contains single plan\", function () {\n",
+                  "        var jsonData = pm.response.json();\n",
+                  "        pm.expect(jsonData.data.id).to.exist;\n",
+                  "        pm.expect(jsonData.data.plan_name).to.exist;\n",
+                  "    });\n",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vendor-plans/{{planName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-plans", "{{planName}}"]
+            },
+            "description": "Get a specific vendor plan by plan name.\n\n**URL Parameters:**\n- `planName` (required): Name of the plan (e.g., 'starter', 'professional')\n\n**Response:**\n- Single plan object with complete details\n\n**Error:**\n- 404: Plan not found"
+          }
+        },
+        {
+          "name": "4. Create Vendor Plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {\n",
+                  "    pm.response.to.have.status(201);\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response contains plan ID\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.data.id).to.exist;\n",
+                  "});\n",
+                  "\n",
+                  "if (pm.response.code === 201) {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.environment.set(\"createdPlanId\", jsonData.data.id);\n",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendorName\": \"{{vendorName}}\",\n  \"planName\": \"enterprise\",\n  \"price\": 499.99\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vendor-plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-plans"]
+            },
+            "description": "Create a new vendor plan.\n\n**Parameters:**\n- `vendorName` (required): Name of the vendor\n- `planName` (required): Name of the plan\n- `price` (required): Price in USD (decimal)\n\n**Response:**\n- Created plan object with ID and timestamps\n\n**Unique Constraint:**\n- Combination of (vendorName, planName) must be unique"
+          }
+        },
+        {
+          "name": "5. Update Vendor Plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n",
+                  "    pm.response.to.have.status(200);\n",
+                  "});\n",
+                  "\n",
+                  "pm.test(\"Response indicates successful update\", function () {\n",
+                  "    var jsonData = pm.response.json();\n",
+                  "    pm.expect(jsonData.message).to.include('updated');\n",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendorName\": \"{{vendorName}}\",\n  \"planName\": \"enterprise\",\n  \"price\": 599.99\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vendor-plans/vendor",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-plans", "vendor"]
+            },
+            "description": "Update an existing vendor plan.\n\n**Parameters:**\n- `vendorName` (required): Vendor name\n- `planName` (required): Plan name\n- `price` (optional): New price in USD\n\n**Updates:**\n- Price and metadata\n- Updated timestamp automatically set"
+          }
+        },
+        {
+          "name": "6. Delete Vendor Plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 404\", function () {\n",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);\n",
+                  "});\n",
+                  "\n",
+                  "if (pm.response.code === 200) {\n",
+                  "    pm.test(\"Response indicates successful deletion\", function () {\n",
+                  "        var jsonData = pm.response.json();\n",
+                  "        pm.expect(jsonData.message).to.include('deleted');\n",
+                  "    });\n",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vendor-plans/1?vendorName={{vendorName}}&planName=enterprise",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-plans", "1"],
+              "query": [
+                {
+                  "key": "vendorName",
+                  "value": "{{vendorName}}"
+                },
+                {
+                  "key": "planName",
+                  "value": "enterprise"
+                }
+              ]
+            },
+            "description": "Delete a vendor plan.\n\n**Query Parameters:**\n- `vendorName` (required): Vendor name\n- `planName` (required): Plan name\n\n**Response:**\n- Success message with null data\n\n**Error:**\n- 404: Plan doesn't exist"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Scenarios & Testing",
+      "description": "Test cases for error handling and validation",
+      "item": [
+        {
+          "name": "Missing API Key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "payment-methods"]
+            },
+            "description": "**Expected Error (401):**\n```json\n{\n  \"success\": false,\n  \"message\": \"API key missing\"\n}\n```"
+          }
+        },
+        {
+          "name": "Invalid API Key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "invalid-key-12345",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "payment-methods"]
+            },
+            "description": "**Expected Error (403):**\n```json\n{\n  \"success\": false,\n  \"message\": \"Invalid API key\"\n}\n```"
+          }
+        },
+        {
+          "name": "Missing Required Field (email)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "payment-methods"]
+            },
+            "description": "**Expected Error (400):**\n```json\n{\n  \"success\": false,\n  \"code\": 400,\n  \"message\": \"Missing user_email_id from body\"\n}\n```"
+          }
+        },
+        {
+          "name": "Invalid Email Format",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invalid-email-format\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "payment-methods"]
+            },
+            "description": "**Expected Error (400):**\n```json\n{\n  \"success\": false,\n  \"code\": 400,\n  \"message\": \"invalid email\"\n}\n```"
+          }
+        },
+        {
+          "name": "Non-existent Customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nonexistent@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "payment-methods"]
+            },
+            "description": "**Expected Response (200 - empty array):**\n```json\n{\n  \"success\": true,\n  \"code\": 200,\n  \"message\": \"No payment methods found for nonexistent@example.com\",\n  \"data\": []\n}\n```"
+          }
+        },
+        {
+          "name": "Invalid Payment Provider",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_provider\": \"invalid-provider\",\n  \"email\": \"test@example.com\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"opaqueData\": {\n    \"dataDescriptor\": \"COMMON.ACCEPT.INAPP.PAYMENT\",\n    \"dataValue\": \"token\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "payment-methods"]
+            },
+            "description": "**Expected Error (400):**\n```json\n{\n  \"success\": false,\n  \"code\": 400,\n  \"message\": \"This payment provider is not currently set up in our system.\"\n}\n```"
+          }
+        },
+        {
+          "name": "Invalid Amount (Less Than 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_provider\": \"{{paymentProvider}}\",\n  \"email\": \"{{email}}\",\n  \"amount\": 0.50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/charge",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "charge"]
+            },
+            "description": "**Expected Error (400):**\n```json\n{\n  \"success\": false,\n  \"code\": 400,\n  \"message\": \"amount must be >= 1\"\n}\n```"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:9441/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "your-api-key-here",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "john.doe@example.com",
+      "type": "string"
+    },
+    {
+      "key": "paymentProvider",
+      "value": "fabzsolutions",
+      "type": "string"
+    },
+    {
+      "key": "amount",
+      "value": "99.99",
+      "type": "string"
+    },
+    {
+      "key": "planName",
+      "value": "starter",
+      "type": "string"
+    },
+    {
+      "key": "vendorName",
+      "value": "callaxis",
+      "type": "string"
+    }
+  ]
+}
